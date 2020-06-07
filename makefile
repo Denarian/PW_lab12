@@ -1,6 +1,7 @@
-zad2: zad2.c
-	mpicc zad2.c -o zad2
+main: main.c
+	mpicc main.c -o main
 
-zad4: zad4.c
-	mpicc zad4.c -lm -o zad4
+test: test.c
+	mpicc test.c -o test
+
 	
