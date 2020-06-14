@@ -23,6 +23,8 @@ int main(int argc, char *argv[]) {
 	if(myrank == 0)
 		readInput(argv[1], &in);
 
+	start = MPI_Wtime(); // Do pomiarow pominiety odczyt danych bo wprowadzal za duzy rozrzut.
+
 	MPI_Bcast( &in.width, 2, MPI_INT,0, MPI_COMM_WORLD );
 
 	int range = in.height / npes; // ilosc wierszy dla pojedynczego procesu poza ostatnim
@@ -67,7 +69,7 @@ int main(int argc, char *argv[]) {
 
 	int x  = myrank * range;//x numer aktualnego wiersza(absolutny)
 	if(myrank == (npes - 1)) range = range_last;	
-	start = MPI_Wtime();
+	
 	for(int i = 0 ; i < range; i++,x++)
 	{
 		if((myrank == npes - 1 &&  x == in.height - 1) || (x == 0 && myrank == 0)) // pierwszy i ostatni wiersz obrazu pominięty 
@@ -142,7 +144,7 @@ int main(int argc, char *argv[]) {
 	MPI_Gatherv(out_pixel ,el_cnt[myrank], MPI_CHAR, in.pixel, el_cnt, disp, MPI_CHAR, 0, MPI_COMM_WORLD);
 	end = MPI_Wtime();
 
-	printf("%d done\n", myrank);
+//	printf("%d done\n", myrank);
 
 	if (myrank == 0) {
         writeData(argv[2], &in);
