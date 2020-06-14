@@ -1,1 +1,1 @@
-mpirun -np $1 ./main $2 $3
+mpiexec -np $1 --oversubscribe ./main $2 $3

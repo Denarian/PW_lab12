@@ -21,9 +21,8 @@ int applyFilter(int width, uchar * img, filter f)
 		}
 		img += width;
 	}
-	if(s > 255) s = 255;
-	else if(s < 0) s = 0;
-	return s / div;
+	s /= div;
+	return s > 255 ? 255 : s < 0 ? 0 : s;
 }
 
 
@@ -34,8 +33,8 @@ int main(int argc, char *argv[]) {
   
 	filter f = {3,3,malloc(sizeof(int)* 3 * 3)};
 	int temp[] = {0,-1,0,
-				-1,5,-1,
-				0,-1,0};
+		     -1,5,-1,
+		      0,-1,0};
 	for(int i; i < 9;i++) f.tab[i] = temp[i];
     
 	readInput(argv[1], &in);

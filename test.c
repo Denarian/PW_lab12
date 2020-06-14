@@ -2,7 +2,7 @@
 #include "pbm.h"
 
 int main(int argc, char *argv[]) {
-    image in, out;
+    image in;
     int npes, myrank;
 	double start, end;
 
@@ -21,25 +21,29 @@ int main(int argc, char *argv[]) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
 	if(myrank == 0)
-	{
 		readInput(argv[1], &in);
 
-		out.height = in.height;
-		out.width = in.width;
-		out.maxValue = in.maxValue;
-		memcpy(out.type, in.type, TYPE_LEN+1);
-
-		out.pixel = (uchar*) malloc(sizeof(uchar)*out.height*out.width);
-	
-	}
 	MPI_Bcast( &in.width, 2, MPI_INT,0, MPI_COMM_WORLD );
 
-	int range = in.height / npes;
- 	uchar * out_pixel = (uchar*) malloc(sizeof(uchar) * in.width * range);
-	uchar * in_pixel = (uchar*) malloc(sizeof(uchar) * in.width * range);
-  
-	MPI_Scatter(in.pixel, in.width * range, MPI_CHAR, in_pixel, in.width * range, MPI_CHAR, 0, MPI_COMM_WORLD);
+	int range = in.height / npes; // ilosc wierszy dla pojedynczego procesu poza ostatnim
+	int range_last = in.height - (range * (npes - 1));
+	int el_cnt[npes]; // ilosc elementow dla poszczegolnych procesów
+	int disp[npes];// odstepy do wysylania
+	
+	for(int i = 0; i < npes - 1; i++)// wypelnienie tablicy zawierajacej ilosci elementow dla poszczegolnych procesow 
+		el_cnt[i] = range * in.width;
+	el_cnt[npes - 1] = range_last * in.width;
 
+	if(myrank == 0){
+		for(int i = 0; i < npes; i++)// wypelnienie tablicy offsetow(od ktrego miejsc ma wyslac do poszczegolnych procesow)
+				disp[i] = i * range * in.width;
+	}
+
+ 	uchar * out_pixel = (uchar*) malloc(sizeof(uchar) * el_cnt[myrank]);
+	uchar * in_pixel = (uchar*) malloc(sizeof(uchar) * el_cnt[myrank]);
+  
+	MPI_Scatterv(in.pixel,el_cnt, disp ,MPI_CHAR, in_pixel, el_cnt[myrank], MPI_CHAR, 0, MPI_COMM_WORLD);
+	
 	uchar * ex_pixels = (uchar*) malloc(sizeof(uchar) * in.width * 2); // dodatkwe wiersze
 
 	if(myrank == 0)
@@ -61,14 +65,14 @@ int main(int argc, char *argv[]) {
 		 	MPI_Recv(ex_pixels + in.width, in.width, MPI_CHAR, 0, 11, MPI_COMM_WORLD, &status);
 	}
 
-	int x  = myrank*range;//x numer aktualnego wiersza(absolutny)
-		
+	int x  = myrank * range;//x numer aktualnego wiersza(absolutny)
+	if(myrank == (npes - 1)) range = range_last;	
 	start = MPI_Wtime();
 	for(int i = 0 ; i < range; i++,x++)
 	{
 		if((myrank == npes - 1 &&  x == in.height - 1) || (x == 0 && myrank == 0)) // pierwszy i ostatni wiersz obrazu pominięty 
 			continue;
-		
+	
 		for(int j = 1; j < in.width-1; j++)// pierwsza i ostatnia kolumna obrazu pominieta.
 		{
 			int s = 0, div = 0;
@@ -135,14 +139,13 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	
-	MPI_Gather(out_pixel, in.width * range, MPI_CHAR, out.pixel, in.width*range, MPI_CHAR, 0, MPI_COMM_WORLD );
-	
+	MPI_Gatherv(out_pixel ,el_cnt[myrank], MPI_CHAR, in.pixel, el_cnt, disp, MPI_CHAR, 0, MPI_COMM_WORLD);
 	end = MPI_Wtime();
 
 	printf("%d done\n", myrank);
 
 	if (myrank == 0) {
-        writeData(argv[2], &out);
+        writeData(argv[2], &in);
 		printf("%lf\n", end-start);
 	}
 	MPI_Finalize();

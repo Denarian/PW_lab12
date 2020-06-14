@@ -1,1 +1,1 @@
-mpirun -np $1 ./test  $2 $3
+mpiexec -np $1 --oversubscribe ./test  $2 $3
